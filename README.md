@@ -135,7 +135,7 @@ This is done automatically by `npm install -g tonpack`.
 
 ## Integration with RTK
 
-Combine with [RTK](https://github.com/sherazahmed93/rtk) for compressing command output:
+Combine with [RTK](https://github.com/isheraz/rtk) for compressing command output:
 
 | Layer | What it compresses | Savings |
 |-------|--------------------|---------|
