@@ -2,8 +2,10 @@
 
 > Compress AI context storage by 30–90% across Claude, Gemini, agy, and Ollama — automatically.
 
-[![npm](https://img.shields.io/npm/v/toon-kit)](https://www.npmjs.com/package/toon-kit)
+[![npm version](https://img.shields.io/npm/v/toon-kit?color=cb3837&logo=npm)](https://www.npmjs.com/package/toon-kit)
+[![npm downloads](https://img.shields.io/npm/dm/toon-kit?color=cb3837)](https://www.npmjs.com/package/toon-kit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-isheraz%2Ftoon--kit-181717?logo=github)](https://github.com/isheraz/toon-kit)
 
 **toon-kit** installs the `ton` CLI and wires a silent hook into Claude Code that converts your AI memory files from verbose JSON/Markdown to [TOON format](https://github.com/toon-format/toon) — a compact, CSV-like notation designed for LLM input.
 
@@ -13,6 +15,8 @@
 npm install -g toon-kit
 exec zsh               # reload shell to activate ton
 ```
+
+> **npm:** [npmjs.com/package/toon-kit](https://www.npmjs.com/package/toon-kit)
 
 That's it. The `postinstall` script silently:
 - Copies files to `~/.claude/toon-setup/`
