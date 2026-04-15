@@ -1,6 +1,6 @@
 {
   "name": "toon-kit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Token-Oriented Object Notation (TOON) CLI — compress AI context storage by 30-90% across Claude, Gemini, agy, and Ollama.",
   "author": "Sheraz Ahmed <sherazahmed93@gmail.com>",
   "license": "MIT",
