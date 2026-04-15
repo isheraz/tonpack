@@ -17,7 +17,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/sherazahmed93/toon-kit"
+    "url": "git+https://github.com/sherazahmed93/toon-kit.git"
   },
   "homepage": "https://github.com/sherazahmed93/toon-kit#readme",
   "bugs": {
@@ -28,7 +28,7 @@
   },
   "preferGlobal": true,
   "bin": {
-    "ton": "./ton"
+    "toon-kit": "ton"
   },
   "files": [
     "ton",
