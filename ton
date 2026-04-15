@@ -1,0 +1,92 @@
+#!/bin/bash
+
+# ton - TOON CLI
+# Usage: ton <command> [options] [operands]
+
+# Prefer installed location; fall back to script's own directory (npm run context)
+if [ -d "$HOME/.claude/toon-setup" ] && [ -f "$HOME/.claude/toon-setup/toon-utils.sh" ]; then
+  TOON_DIR="$HOME/.claude/toon-setup"
+  SKILLS_DIR="$HOME/.claude/skills"
+else
+  TOON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  SKILLS_DIR="$TOON_DIR"
+fi
+
+B='\033[0;34m'   # blue
+G='\033[0;32m'   # green
+Y='\033[1;33m'   # yellow
+C='\033[0;36m'   # cyan
+D='\033[2m'      # dim
+NC='\033[0m'     # reset
+
+_usage() {
+  echo -e "${B}ton${NC} - TOON Token Optimizer"
+  echo ""
+  echo -e "${D}Usage:${NC}"
+  echo -e "  ton ${C}<command>${NC} [operands]"
+  echo ""
+  echo -e "${D}Commands:${NC}"
+  echo -e "  ${C}setup${NC}               Install dependencies and configure all AI tools"
+  echo -e "  ${C}verify${NC}              Check setup status across all tools"
+  echo -e "  ${C}init${NC} [dir]          Create .toon/memory/ in project dir ${D}(default: cwd)${NC}"
+  echo -e "  ${C}convert${NC} [dir]       Convert memory files to TOON format"
+  echo -e "  ${C}watch${NC}               Watch memory dirs and auto-convert on change"
+  echo -e "  ${C}stats${NC}               Show token savings"
+  echo -e "  ${C}clean${NC} [days]        Remove TOON files older than N days ${D}(default: 30)${NC}"
+  echo -e "  ${C}export${NC} [fmt] [dir]  Export context as json|toon|md ${D}(default: json, cwd)${NC}"
+  echo -e "  ${C}run${NC} <cmd> [args]    Run converter directly ${D}(json-to-toon, toon-to-json, md-to-toon, inline)${NC}"
+  echo -e "  ${C}help${NC}                Show this help"
+  echo ""
+  echo -e "${D}Examples:${NC}"
+  echo -e "  ${G}ton setup${NC}"
+  echo -e "  ${G}ton init${NC}"
+  echo -e "  ${G}ton init ./my-project${NC}"
+  echo -e "  ${G}ton convert${NC}"
+  echo -e "  ${G}ton convert ./my-project${NC}"
+  echo -e "  ${G}ton stats${NC}"
+  echo -e "  ${G}ton clean 60${NC}"
+  echo -e "  ${G}ton export json ./backup${NC}"
+  echo -e "  ${G}ton run json-to-toon data.json${NC}"
+  echo -e "  ${G}ton run inline '{\"users\":[{\"id\":1,\"name\":\"Alice\"}]}'${NC}"
+}
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  setup)
+    bash "$SKILLS_DIR/toon-global-setup.sh" "$@"
+    ;;
+  verify)
+    bash "$TOON_DIR/toon-utils.sh" verify "$@"
+    ;;
+  init)
+    bash "$TOON_DIR/toon-utils.sh" init "$@"
+    ;;
+  convert)
+    bash "$TOON_DIR/memory-converter.sh" convert "$@"
+    ;;
+  watch)
+    bash "$TOON_DIR/memory-converter.sh" watch "$@"
+    ;;
+  stats)
+    bash "$TOON_DIR/toon-utils.sh" stats "$@"
+    ;;
+  clean)
+    bash "$TOON_DIR/toon-utils.sh" cleanup "$@"
+    ;;
+  export)
+    bash "$TOON_DIR/toon-utils.sh" export "$@"
+    ;;
+  run)
+    node "$TOON_DIR/converter.js" "$@"
+    ;;
+  help|--help|-h)
+    _usage
+    ;;
+  *)
+    echo -e "${Y}ton:${NC} unknown command '${C}$cmd${NC}'" >&2
+    echo -e "Run '${G}ton help${NC}' for usage." >&2
+    exit 1
+    ;;
+esac

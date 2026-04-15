@@ -1,0 +1,48 @@
+{
+  "name": "toon-kit",
+  "version": "1.0.0",
+  "description": "Token-Oriented Object Notation (TOON) CLI — compress AI context storage by 30-90% across Claude, Gemini, agy, and Ollama.",
+  "author": "Sheraz Ahmed <sherazahmed93@gmail.com>",
+  "license": "MIT",
+  "keywords": [
+    "toon",
+    "token-optimization",
+    "claude",
+    "claude-code",
+    "gemini",
+    "ai-tools",
+    "context-compression",
+    "llm",
+    "ai-memory"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sherazahmed93/toon-kit"
+  },
+  "homepage": "https://github.com/sherazahmed93/toon-kit#readme",
+  "bugs": {
+    "url": "https://github.com/sherazahmed93/toon-kit/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "preferGlobal": true,
+  "bin": {
+    "ton": "./ton"
+  },
+  "files": [
+    "ton",
+    "install.sh",
+    "install-dependencies.sh",
+    "configure-ai-tools.sh",
+    "toon-utils.sh",
+    "toon-global-setup.sh",
+    "shell-integration.sh",
+    "skill.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "bash install.sh"
+  }
+}
