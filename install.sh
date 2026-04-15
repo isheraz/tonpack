@@ -25,8 +25,8 @@ main() {
   local action="${1:-install}"
 
   case "$action" in
-    install|setup)
-      full_install
+    install|setup|--silent)
+      full_install "$action"
       ;;
     verify)
       verify_install
@@ -45,67 +45,96 @@ main() {
 # ============================================================================
 
 full_install() {
-  echo -e "\n${BLUE}╔════════════════════════════════════════════════╗${NC}"
-  echo -e "${BLUE}║ TOON Global Setup - Installation               ║${NC}"
-  echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}\n"
+  # Detect silent mode (npm postinstall or explicit --silent flag)
+  local silent=false
+  [[ "${npm_lifecycle_event}" == "postinstall" || "$1" == "--silent" ]] && silent=true
 
-  echo "Installation source: $INSTALL_DIR"
-  echo "Installation target: $TOON_SETUP_DIR"
-  echo ""
+  if [ "$silent" = false ]; then
+    echo -e "\n${BLUE}╔════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║ TOON Global Setup - Installation               ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}\n"
+    echo "Installation source: $INSTALL_DIR"
+    echo "Installation target: $TOON_SETUP_DIR"
+    echo ""
+  fi
 
-  # Create target directory
-  mkdir -p "$TOON_SETUP_DIR"
-  mkdir -p "$TOON_CONTEXT_DIR"
+  # Create target directories
+  mkdir -p "$TOON_SETUP_DIR" "$TOON_CONTEXT_DIR"
 
   # Copy all files
-  echo -e "${BLUE}Copying files...${NC}"
   cp "$INSTALL_DIR"/*.sh "$TOON_SETUP_DIR/" 2>/dev/null || true
   cp "$INSTALL_DIR"/*.js "$TOON_SETUP_DIR/" 2>/dev/null || true
   cp "$INSTALL_DIR"/*.md "$TOON_SETUP_DIR/" 2>/dev/null || true
-  cp "$INSTALL_DIR/ton" "$TOON_SETUP_DIR/ton" 2>/dev/null || true
+  cp "$INSTALL_DIR/ton"  "$TOON_SETUP_DIR/ton" 2>/dev/null || true
   chmod +x "$TOON_SETUP_DIR"/*.sh "$TOON_SETUP_DIR/ton" 2>/dev/null || true
+  [ "$silent" = false ] && echo -e "${GREEN}✓ Files copied${NC}"
 
-  echo -e "${GREEN}✓ Files copied${NC}"
+  # Copy skill file for Claude Code
+  mkdir -p "$HOME/.claude/skills"
+  cp "$INSTALL_DIR/skill.md" "$HOME/.claude/skills/ton.md" 2>/dev/null || true
+  [ "$silent" = false ] && echo -e "${GREEN}✓ Skill installed${NC}"
 
-  # Copy main skill if in Claude skills directory
-  if [ -d "$HOME/.claude/skills" ]; then
-    echo -e "${BLUE}Installing main skill...${NC}"
-    cat > "$HOME/.claude/skills/toon-global-setup.sh" << 'SKILLEOF'
-#!/bin/bash
+  # Configure Claude settings (Stop hook + contextStorage) silently
+  configure_claude_settings
+  [ "$silent" = false ] && echo -e "${GREEN}✓ Claude configured${NC}"
 
-# TOON Global Setup Skill
-# Main entry point for TOON context setup
+  # Shell integration
+  setup_shell_integration "$silent"
 
-TOON_SETUP_DIR="$HOME/.claude/toon-setup"
-
-if [ ! -f "$TOON_SETUP_DIR/toon-global-setup.sh" ]; then
-  echo "Error: TOON setup not installed. Run: bash $TOON_SETUP_DIR/install.sh"
-  exit 1
-fi
-
-bash "$TOON_SETUP_DIR/toon-global-setup.sh" "$@"
-SKILLEOF
-    chmod +x "$HOME/.claude/skills/toon-global-setup.sh"
-    echo -e "${GREEN}✓ Skill installed${NC}"
+  if [ "$silent" = true ]; then
+    echo "toon-kit: installed and configured. Reload your shell: exec zsh"
+  else
+    echo -e "\n${GREEN}✓ Installation complete!${NC}\n"
+    echo -e "${BLUE}Next steps:${NC}"
+    echo "  1. Reload shell:  exec zsh"
+    echo "  2. Check status:  ton verify"
+    echo "  3. View savings:  ton stats"
+    echo ""
+    echo -e "${YELLOW}Quick reference:${NC}"
+    echo "  ton help    - Show all commands"
+    echo "  ton stats   - Show token savings"
+    echo "  ton convert - Convert memory to TOON"
+    echo ""
   fi
+}
 
-  # Setup shell integration
-  echo -e "${BLUE}Setting up shell integration...${NC}"
-  setup_shell_integration
+# ============================================================================
+# Configure Claude settings.json silently
+# ============================================================================
 
-  echo -e "\n${GREEN}✓ Installation complete!${NC}\n"
+configure_claude_settings() {
+  local settings="$HOME/.claude/settings.json"
+  [ ! -f "$settings" ] && return 0
 
-  echo -e "${BLUE}Next steps:${NC}"
-  echo "  1. Restart your shell:  exec zsh"
-  echo "  2. Run full setup:      ton setup"
-  echo "  3. Verify installation: ton verify"
-  echo ""
-  echo -e "${YELLOW}Quick reference:${NC}"
-  echo "  ton help    - Show all commands"
-  echo "  ton setup   - Run full setup"
-  echo "  ton stats   - Show token savings"
-  echo "  ton convert - Convert memory to TOON"
-  echo ""
+  # Skip if Stop hook already present
+  grep -q "save-context-toon" "$settings" && return 0
+
+  # Use node to safely merge JSON (available since we require node >=14)
+  node - "$settings" "$TOON_SETUP_DIR" << 'JSEOF'
+const fs = require('fs');
+const path = process.argv[2];
+const toonDir = process.argv[3];
+try {
+  const s = JSON.parse(fs.readFileSync(path, 'utf8'));
+  if (!s.hooks) s.hooks = {};
+  if (!s.hooks.Stop) s.hooks.Stop = [];
+  const hook = { hooks: [{ type: 'command', command: toonDir + '/hooks/save-context-toon.sh' }] };
+  s.hooks.Stop.push(hook);
+  if (!s.contextStorage) s.contextStorage = { format: 'toon', path: process.env.HOME + '/.claude/toon-context', autoCompress: true, compressThreshold: 50000 };
+  fs.writeFileSync(path, JSON.stringify(s, null, 2));
+} catch(e) {}
+JSEOF
+
+  # Ensure hooks directory and script exist
+  mkdir -p "$TOON_SETUP_DIR/hooks"
+  if [ ! -f "$TOON_SETUP_DIR/hooks/save-context-toon.sh" ]; then
+    cat > "$TOON_SETUP_DIR/hooks/save-context-toon.sh" << 'HOOKEOF'
+#!/bin/bash
+# TOON: Auto-convert memory files after each Claude Code session
+"$HOME/.claude/toon-setup/memory-converter.sh" convert "$PWD" 2>/dev/null || true
+HOOKEOF
+    chmod +x "$TOON_SETUP_DIR/hooks/save-context-toon.sh"
+  fi
 }
 
 # ============================================================================
@@ -113,6 +142,7 @@ SKILLEOF
 # ============================================================================
 
 setup_shell_integration() {
+  local silent="${1:-false}"
   local shell_rc=""
 
   if [ -f "$HOME/.zshrc" ]; then
@@ -120,24 +150,22 @@ setup_shell_integration() {
   elif [ -f "$HOME/.bashrc" ]; then
     shell_rc="$HOME/.bashrc"
   else
-    echo -e "${YELLOW}⚠ No shell RC file found. Skipping shell integration.${NC}"
-    return 1
-  fi
-
-  # Check if already integrated
-  if grep -q "toon-setup/shell-integration.sh" "$shell_rc"; then
-    echo -e "${GREEN}✓ Already integrated in $shell_rc${NC}"
+    [ "$silent" = false ] && echo -e "${YELLOW}⚠ No shell RC file found. Skipping shell integration.${NC}"
     return 0
   fi
 
-  # Add integration
+  if grep -q "toon-setup/shell-integration.sh" "$shell_rc"; then
+    [ "$silent" = false ] && echo -e "${GREEN}✓ Already integrated in $shell_rc${NC}"
+    return 0
+  fi
+
   cat >> "$shell_rc" << 'RCEOF'
 
-# TOON Global Setup - Token-Oriented Object Notation context storage
+# toon-kit — TOON token optimizer (https://github.com/sherazahmed93/toon-kit)
 source "$HOME/.claude/toon-setup/shell-integration.sh" 2>/dev/null || true
 RCEOF
 
-  echo -e "${GREEN}✓ Integrated into $shell_rc${NC}"
+  [ "$silent" = false ] && echo -e "${GREEN}✓ Integrated into $shell_rc${NC}"
 }
 
 # ============================================================================
